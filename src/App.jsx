@@ -35,7 +35,7 @@ const VERDICTS = {
 function Disclaimer({ compact }) {
   return (
     <div className={`disclaimer ${compact ? 'compact' : ''}`}>
-      <strong>⚠ Community code — untested by OttoClawHub.</strong>{' '}
+      <strong>⚠ Community code — untested by OttoAppHub.</strong>{' '}
       Every plugin and skill here is submitted by users and tested only by other users.
       We do not review, audit, or endorse any code. <strong>Install and run at your own risk.</strong>
     </div>
@@ -184,7 +184,7 @@ function Home({ user }) {
         <ol>
           <li><strong>Submit</strong> — make an account and post a link to a ClawHub plugin or skill built for Otto.</li>
           <li><strong>Test</strong> — other users install it and report back: <em>works</em>, <em>broken</em>, or <em>unsafe</em>.</li>
-          <li><strong>Decide</strong> — you see the community's reports at a glance. OttoClawHub itself never vets the code, so treat every listing as untrusted and review the source yourself before installing.</li>
+          <li><strong>Decide</strong> — you see the community's reports at a glance. OttoAppHub itself never vets the code, so treat every listing as untrusted and review the source yourself before installing.</li>
         </ol>
       </section>
     </div>
@@ -389,7 +389,7 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <a className="logo" onClick={(e) => { e.preventDefault(); nav('/'); }}>🐾 Otto<span className="accent">Claw</span>Hub</a>
+        <a className="logo" onClick={(e) => { e.preventDefault(); nav('/'); }}>🐾 Otto<span className="accent">App</span>Hub</a>
         <nav>
           <a onClick={(e) => { e.preventDefault(); nav('/submit'); }}>Submit</a>
           {user && <a onClick={(e) => { e.preventDefault(); nav('/mine'); }}>Mine</a>}
@@ -406,7 +406,7 @@ export default function App() {
       <main>{page}</main>
       <footer>
         <p>
-          OttoClawHub is a community directory for ClawHub plugins &amp; skills made for <a href="https://myotto.ai" target="_blank" rel="noreferrer">Otto</a>.
+          OttoAppHub is a community directory for ClawHub plugins &amp; skills made for <a href="https://myotto.ai" target="_blank" rel="noreferrer">Otto</a>.
           Listings are unvetted community submissions — <strong>use at your own risk</strong>.
         </p>
       </footer>

@@ -1,11 +1,11 @@
-# OttoClawHub 🐾
+# OttoAppHub 🐾
 
 A community-run directory of **ClawHub plugins and skills made for [Otto](https://myotto.ai)** users.
 
 - Anyone can create an account (username + email + password) and submit a plugin or skill link.
 - Other users test listings and file reports: **✓ works**, **⚠ broken**, **⛔ unsafe**.
 - Listings show community report counts at a glance.
-- Everything is clearly marked: **code is untested by OttoClawHub — use at your own risk.**
+- Everything is clearly marked: **code is untested by OttoAppHub — use at your own risk.**
 
 ## Stack
 

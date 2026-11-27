@@ -1,4 +1,4 @@
-// OttoClawHub API — one Netlify Function mounted at /api/*
+// OttoAppHub API — one Netlify Function mounted at /api/*
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
 import { store, backendName } from './_lib/store.mjs';
@@ -76,7 +76,7 @@ async function lookupClawHub(rawUrl) {
   }
   let res;
   try {
-    res = await fetch(u, { redirect: 'follow', signal: AbortSignal.timeout(6000), headers: { 'User-Agent': 'OttoClawHub-bot/1.0 (+https://ottoclawhub.netlify.app)' } });
+    res = await fetch(u, { redirect: 'follow', signal: AbortSignal.timeout(6000), headers: { 'User-Agent': 'OttoAppHub-bot/1.0 (+https://ottoapphub.netlify.app)' } });
   } catch {
     return { error: 'Could not reach clawhub.ai. Try again in a moment.' };
   }
