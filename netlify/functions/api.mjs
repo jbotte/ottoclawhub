@@ -38,6 +38,78 @@ const isHttpUrl = (s) => {
 };
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
+/* ---- ClawHub lookup (server-side meta fetch, clawhub.ai allowlist only) ---- */
+
+function decodeEntities(s) {
+  const map = { amp: '&', quot: '"', lt: '<', gt: '>', nbsp: ' ', apos: "'" };
+  return s.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (m, e) => {
+    if (e[0] === '#') {
+      const c = e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
+      return Number.isFinite(c) ? String.fromCodePoint(c) : m;
+    }
+    return map[e.toLowerCase()] ?? m;
+  });
+}
+
+function getMeta(html, key) {
+  for (const tag of html.match(/<meta\b[^>]*>/gi) || []) {
+    const attr = (n) => {
+      const d = tag.match(new RegExp(`${n}="([^"]*)"`, 'i'));
+      if (d) return decodeEntities(d[1]);
+      const s = tag.match(new RegExp(`${n}='([^']*)'`, 'i'));
+      return s ? decodeEntities(s[1]) : null;
+    };
+    if (attr('property') === key || attr('name') === key) return attr('content');
+  }
+  return null;
+}
+
+async function lookupClawHub(rawUrl) {
+  let u;
+  try { u = new URL(rawUrl); } catch { return { error: 'That is not a valid URL.' }; }
+  if (u.protocol !== 'https:' || (u.hostname !== 'clawhub.ai' && u.hostname !== 'www.clawhub.ai')) {
+    return { error: 'Only https://clawhub.ai links can be auto-filled.' };
+  }
+  const pathMatch = u.pathname.match(/^\/([^/]+)\/(plugins|skills)\/([^/]+)/);
+  if (!pathMatch) {
+    return { error: 'Link should look like https://clawhub.ai/<author>/plugins/<name> or …/skills/<name>.' };
+  }
+  let res;
+  try {
+    res = await fetch(u, { redirect: 'follow', signal: AbortSignal.timeout(6000), headers: { 'User-Agent': 'OttoClawHub-bot/1.0 (+https://ottoclawhub.netlify.app)' } });
+  } catch {
+    return { error: 'Could not reach clawhub.ai. Try again in a moment.' };
+  }
+  if (!res.ok) return { error: `clawhub.ai responded ${res.status} — is that link correct?` };
+  const html = (await res.text()).slice(0, 300_000);
+
+  const ogTitle = getMeta(html, 'og:title') || '';
+  const title = ogTitle.replace(/\s*[\u2014\u2013-]\s*ClawHub(\s+(Plugins|Skills))?\s*$/i, '').trim()
+    || getMeta(html, 'twitter:title')?.replace(/\s*[\u2014\u2013-]\s*ClawHub(\s+(Plugins|Skills))?\s*$/i, '').trim()
+    || pathMatch[3].replace(/[-_]+/g, ' ');
+  const summary = getMeta(html, 'og:description') || getMeta(html, 'description') || '';
+
+  let packageName = null, version = null;
+  const ogImage = getMeta(html, 'og:image');
+  if (ogImage) {
+    try {
+      const img = new URL(ogImage);
+      packageName = img.searchParams.get('name') || null;
+      version = img.searchParams.get('version') || null;
+    } catch { /* ignore */ }
+  }
+
+  return {
+    type: pathMatch[2] === 'plugins' ? 'plugin' : 'skill',
+    title: title.slice(0, 120),
+    summary: summary.slice(0, 2000),
+    install: packageName ? `clawhub install ${packageName}` : '',
+    package: packageName,
+    version,
+    author: pathMatch[1],
+  };
+}
+
 function parseBody(text) {
   try { return JSON.parse(text || '{}'); }
   catch { return null; }
@@ -144,6 +216,13 @@ export default async function handler(request) {
         return json(200, { listing: await store.getListing(id) });
       }
       return json(404, { error: 'Not found' });
+    }
+
+    if (seg === 'lookup' && method === 'GET') {
+      const me = await authed(request);
+      if (!me) return json(401, { error: 'Log in first.' });
+      const result = await lookupClawHub(str(qs.url, 500));
+      return result.error ? json(400, result) : json(200, result);
     }
 
     if (seg === 'mine' && method === 'GET') {

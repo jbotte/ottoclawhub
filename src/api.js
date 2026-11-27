@@ -24,4 +24,5 @@ export const api = {
   deleteListing: (id) => req('DELETE', `/api/listings/${id}`),
   review: (id, verdict, comment) => req('POST', `/api/listings/${id}/reviews`, { verdict, comment }),
   mine: () => req('GET', '/api/mine'),
+  lookup: (url) => req('GET', `/api/lookup?url=${encodeURIComponent(url)}`),
 };

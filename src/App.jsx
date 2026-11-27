@@ -195,9 +195,29 @@ function Submit({ user, requireAuth }) {
   const [form, setForm] = useState({ type: 'plugin', title: '', url: '', summary: '', install: '', tags: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const [fetching, setFetching] = useState(false);
+  const [fetched, setFetched] = useState(false);
+  const set = (k) => (e) => { setForm({ ...form, [k]: e.target.value }); if (k === 'url') setFetched(false); };
 
   if (!user) { requireAuth(); return <p className="muted">Log in to submit a listing.</p>; }
+
+  const isClawHub = /^https:\/\/(www\.)?clawhub\.ai\//i.test(form.url.trim());
+
+  async function fetchDetails() {
+    setError(''); setFetching(true); setFetched(false);
+    try {
+      const r = await api.lookup(form.url.trim());
+      setForm((f) => ({
+        ...f,
+        type: r.type || f.type,
+        title: r.title || f.title,
+        summary: r.summary || f.summary,
+        install: r.install || f.install,
+      }));
+      setFetched(true);
+    } catch (err) { setError(err.message); }
+    finally { setFetching(false); }
+  }
 
   async function submit(e) {
     e.preventDefault(); setError(''); setBusy(true);
@@ -225,6 +245,13 @@ function Submit({ user, requireAuth }) {
         <label>Link *
           <input value={form.url} onChange={set('url')} required type="url" placeholder="https://clawhub.ai/…" />
         </label>
+        <div className="row">
+          <button type="button" className="btn" onClick={fetchDetails} disabled={!isClawHub || fetching}>
+            {fetching ? 'Fetching…' : '⤓ Fetch details from ClawHub'}
+          </button>
+          {fetched && <span className="muted small">Auto-filled from ClawHub — edit anything before submitting.</span>}
+          {!fetched && !isClawHub && form.url && <span className="muted small">Auto-fill works for https://clawhub.ai links.</span>}
+        </div>
         <label>What does it do?
           <textarea value={form.summary} onChange={set('summary')} rows={4} maxLength={2000} placeholder="Short description, setup notes, anything testers should know." />
         </label>
