@@ -15,41 +15,41 @@ if (useNeon) {
 
 const neonStore = {
   async createUser(username, email, passHash) {
-    const rows = await sql.query(
+    const rows = await sql(
       'INSERT INTO users (username, email, pass_hash) VALUES ($1,$2,$3) RETURNING id, username, email, created_at',
       [username, email, passHash]
     );
     return rows[0];
   },
   async findUserByEmail(email) {
-    const rows = await sql.query('SELECT * FROM users WHERE email = $1', [email]);
+    const rows = await sql('SELECT * FROM users WHERE email = $1', [email]);
     return rows[0] || null;
   },
   async findUserById(id) {
-    const rows = await sql.query('SELECT id, username, email, created_at FROM users WHERE id = $1', [id]);
+    const rows = await sql('SELECT id, username, email, created_at FROM users WHERE id = $1', [id]);
     return rows[0] || null;
   },
   async createSession(token, userId, expiresAt) {
-    await sql.query('INSERT INTO sessions (token, user_id, expires_at) VALUES ($1,$2,$3)', [token, userId, expiresAt]);
+    await sql('INSERT INTO sessions (token, user_id, expires_at) VALUES ($1,$2,$3)', [token, userId, expiresAt]);
   },
   async getSession(token) {
-    const rows = await sql.query(
+    const rows = await sql(
       'SELECT s.user_id, s.expires_at, u.username FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = $1',
       [token]
     );
     const r = rows[0];
     if (!r) return null;
     if (new Date(r.expires_at) < new Date()) {
-      await sql.query('DELETE FROM sessions WHERE token = $1', [token]);
+      await sql('DELETE FROM sessions WHERE token = $1', [token]);
       return null;
     }
     return { userId: r.user_id, username: r.username };
   },
   async deleteSession(token) {
-    await sql.query('DELETE FROM sessions WHERE token = $1', [token]);
+    await sql('DELETE FROM sessions WHERE token = $1', [token]);
   },
   async createListing(u, l) {
-    const rows = await sql.query(
+    const rows = await sql(
       `INSERT INTO listings (user_id, type, title, url, summary, install, tags)
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
       [u.userId, l.type, l.title, l.url, l.summary, l.install, l.tags]
@@ -57,14 +57,14 @@ const neonStore = {
     return this.getListing(rows[0].id);
   },
   async getListing(id) {
-    const rows = await sql.query(
+    const rows = await sql(
       `SELECT l.*, u.username FROM listings l JOIN users u ON u.id = l.user_id WHERE l.id = $1`,
       [id]
     );
     const listing = rows[0];
     if (!listing) return null;
     await attachStatsNeon([listing]);
-    listing.reviews = await sql.query(
+    listing.reviews = await sql(
       `SELECT r.id, r.verdict, r.comment, r.created_at, r.updated_at, u.username
        FROM reviews r JOIN users u ON u.id = r.user_id
        WHERE r.listing_id = $1 ORDER BY r.updated_at DESC`,
@@ -87,7 +87,7 @@ const neonStore = {
       : 'ORDER BY l.created_at DESC';
     const orderParams = sort === 'top' ? ['works'] : [];
     params.push(Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200));
-    const rows = await sql.query(
+    const rows = await sql(
       `SELECT l.*, u.username FROM listings l JOIN users u ON u.id = l.user_id
        ${whereSql} ${orderSql} LIMIT $${params.length}`,
       [...orderParams, ...params]
@@ -96,11 +96,11 @@ const neonStore = {
     return rows;
   },
   async deleteListing(id, userId) {
-    const rows = await sql.query('DELETE FROM listings WHERE id = $1 AND user_id = $2 RETURNING id', [id, userId]);
+    const rows = await sql('DELETE FROM listings WHERE id = $1 AND user_id = $2 RETURNING id', [id, userId]);
     return rows.length > 0;
   },
   async upsertReview(listingId, userId, verdict, comment) {
-    const rows = await sql.query(
+    const rows = await sql(
       `INSERT INTO reviews (listing_id, user_id, verdict, comment)
        VALUES ($1,$2,$3,$4)
        ON CONFLICT (listing_id, user_id)
@@ -111,7 +111,7 @@ const neonStore = {
     return rows[0].id;
   },
   async listMine(userId) {
-    const rows = await sql.query(
+    const rows = await sql(
       'SELECT l.*, u.username FROM listings l JOIN users u ON u.id = l.user_id WHERE l.user_id = $1 ORDER BY l.created_at DESC',
       [userId]
     );
@@ -123,7 +123,7 @@ const neonStore = {
 async function attachStatsNeon(listings) {
   if (!listings.length) return;
   const ids = listings.map((l) => l.id);
-  const rows = await sql.query(
+  const rows = await sql(
     `SELECT listing_id, verdict, COUNT(*)::int AS n FROM reviews WHERE listing_id = ANY($1::uuid[]) GROUP BY listing_id, verdict`,
     [ids]
   );

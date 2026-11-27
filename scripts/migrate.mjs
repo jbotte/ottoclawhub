@@ -23,6 +23,10 @@ const dir = join(root, 'migrations');
 const files = (await readdir(dir)).filter((f) => f.endsWith('.sql')).sort();
 for (const f of files) {
   console.log(`applying ${f} ...`);
-  await sql.query(await readFile(join(dir, f), 'utf8'));
+  const sqlText = await readFile(join(dir, f), 'utf8');
+  for (const stmt of sqlText.split(/;\s*\n/)) {
+    const clean = stmt.trim();
+    if (clean) await sql(clean);
+  }
 }
 console.log('migrations complete.');
