@@ -97,7 +97,7 @@ export default async function handler(request) {
     }
 
     if (seg === 'me') {
-      const me = await authed(event);
+      const me = await authed(request);
       return me ? json(200, { user: { id: me.userId, username: me.username } }) : json(401, { user: null });
     }
 
@@ -108,7 +108,7 @@ export default async function handler(request) {
         return json(200, { listings });
       }
       if (!id && method === 'POST') {
-        const me = await authed(event);
+        const me = await authed(request);
         if (!me) return json(401, { error: 'Log in to submit a listing.' });
         const type = body.type === 'skill' ? 'skill' : body.type === 'plugin' ? 'plugin' : null;
         const title = str(body.title, 120);
@@ -127,13 +127,13 @@ export default async function handler(request) {
         return listing ? json(200, { listing }) : json(404, { error: 'Listing not found.' });
       }
       if (id && method === 'DELETE') {
-        const me = await authed(event);
+        const me = await authed(request);
         if (!me) return json(401, { error: 'Log in first.' });
         const ok = await store.deleteListing(id, me.userId);
         return ok ? json(200, { ok: true }) : json(404, { error: 'Listing not found (or it is not yours).' });
       }
       if (id && sub === 'reviews' && method === 'POST') {
-        const me = await authed(event);
+        const me = await authed(request);
         if (!me) return json(401, { error: 'Log in to leave a testing report.' });
         const verdict = ['works', 'broken', 'unsafe'].includes(body.verdict) ? body.verdict : null;
         const comment = str(body.comment, 2000);
@@ -147,7 +147,7 @@ export default async function handler(request) {
     }
 
     if (seg === 'mine' && method === 'GET') {
-      const me = await authed(event);
+      const me = await authed(request);
       if (!me) return json(401, { error: 'Log in first.' });
       return json(200, { listings: await store.listMine(me.userId) });
     }
