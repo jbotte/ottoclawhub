@@ -41,16 +41,16 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   try {
     if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {
-      const event = {
-        httpMethod: req.method,
-        path: url.pathname,
+      const request = new Request(`http://localhost${url.pathname}${url.search}`, {
+        method: req.method,
         headers: req.headers,
-        queryStringParameters: Object.fromEntries(url.searchParams),
-        body: req.method === 'GET' || req.method === 'HEAD' ? null : await readBody(req),
-      };
-      const result = await apiHandler(event, {});
-      res.writeHead(result.statusCode, result.headers);
-      res.end(result.body);
+        body: req.method === 'GET' || req.method === 'HEAD' ? undefined : await readBody(req),
+      });
+      const result = await apiHandler(request);
+      const headers = {};
+      for (const [k, v] of result.headers) if (k.toLowerCase() !== 'content-length') headers[k] = v;
+      res.writeHead(result.status, headers);
+      res.end(await result.text());
       return;
     }
     // static

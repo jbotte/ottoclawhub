@@ -7,7 +7,10 @@ const SESSION_DAYS = 30;
 const COOKIE = 'och_session';
 
 function json(status, body, extraHeaders = {}) {
-  return { statusCode: status, headers: { 'Content-Type': 'application/json', ...extraHeaders }, body: JSON.stringify(body) };
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...extraHeaders },
+  });
 }
 
 function parseCookies(header = '') {
@@ -23,8 +26,8 @@ function sessionCookie(token, maxAgeSec) {
   return `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSec}`;
 }
 
-async function authed(event) {
-  const token = parseCookies(event.headers?.cookie || event.headers?.Cookie)[COOKIE];
+async function authed(request) {
+  const token = parseCookies(request.headers.get('cookie') || '')[COOKIE];
   if (!token) return null;
   return store.getSession(token);
 }
@@ -35,8 +38,8 @@ const isHttpUrl = (s) => {
 };
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
-function parseBody(event) {
-  try { return typeof event.body === 'string' ? JSON.parse(event.body || '{}') : event.body || {}; }
+function parseBody(text) {
+  try { return JSON.parse(text || '{}'); }
   catch { return null; }
 }
 
@@ -46,12 +49,13 @@ function routeParts(path) {
   return i === -1 ? [] : parts.slice(i + 1);
 }
 
-export default async function handler(event) {
-  const method = (event.httpMethod || 'GET').toUpperCase();
-  const [seg, id, sub] = routeParts(event.path || '/api');
-  const body = method === 'GET' ? {} : parseBody(event);
+export default async function handler(request) {
+  const method = request.method.toUpperCase();
+  const url = new URL(request.url);
+  const [seg, id, sub] = routeParts(url.pathname);
+  const qs = Object.fromEntries(url.searchParams);
+  const body = method === 'GET' ? {} : parseBody(await request.text());
   if (body === null) return json(400, { error: 'Invalid JSON body' });
-  const qs = event.queryStringParameters || {};
 
   try {
     /* ---- meta ---- */
@@ -85,7 +89,7 @@ export default async function handler(event) {
         return json(200, { user: { id: user.id, username: user.username } }, { 'Set-Cookie': sessionCookie(token, SESSION_DAYS * 86400) });
       }
       if (id === 'logout' && method === 'POST') {
-        const token = parseCookies(event.headers?.cookie || event.headers?.Cookie)[COOKIE];
+        const token = parseCookies(request.headers.get('cookie') || '')[COOKIE];
         if (token) await store.deleteSession(token);
         return json(200, { ok: true }, { 'Set-Cookie': sessionCookie('', 0) });
       }
